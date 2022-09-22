@@ -27,8 +27,6 @@ export class ProductsService {
       },
     });
 
-    console.log(productWithSameSlug);
-
     if (productWithSameSlug) {
       throw new ConflictException(
         productWithSameSlug,

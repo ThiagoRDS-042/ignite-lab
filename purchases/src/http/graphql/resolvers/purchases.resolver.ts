@@ -8,17 +8,19 @@ import {
   Args,
 } from '@nestjs/graphql';
 import { AuthorizationGuard } from 'src/http/auth/authorization.guard';
-import { CurrentUser } from 'src/http/auth/current-user';
+import { AuthUser, CurrentUser } from 'src/http/auth/current-user';
+import { CustomersService } from 'src/services/customers.service';
 import { ProductsService } from 'src/services/products.service';
 import { PurchasesService } from 'src/services/purchases.service';
 import { CreatePurchaseInput } from '../inputs/create-purchase-input';
-import { Purchase } from '../models/Purchase';
+import { Purchase } from '../models/purchase';
 
 @Resolver(() => Purchase)
 export class PurchasesResolver {
   constructor(
     private readonly purchasesService: PurchasesService,
     private readonly productsService: ProductsService,
+    private readonly customersService: CustomersService,
   ) {}
 
   @Query(() => [Purchase])
@@ -34,8 +36,23 @@ export class PurchasesResolver {
 
   @Mutation(() => Purchase)
   @UseGuards(AuthorizationGuard)
-  createPurchase(@Args('data') data: CreatePurchaseInput, @CurrentUser() user) {
-    return null;
-    // return this.purchasesService.createPurchase({ productId: data.productId });
+  async createPurchase(
+    @Args('data') data: CreatePurchaseInput,
+    @CurrentUser() user: AuthUser,
+  ) {
+    let customer = await this.customersService.getCustomerByAuthUserId(
+      user.sub,
+    );
+
+    if (!customer) {
+      customer = await this.customersService.createCustomer({
+        authUserId: user.sub,
+      });
+    }
+
+    return this.purchasesService.createPurchase({
+      productId: data.productId,
+      customerId: customer.id,
+    });
   }
 }
